@@ -1,3 +1,4 @@
+import inspect
 import json
 import threading
 from collections import deque
@@ -11,6 +12,7 @@ from app import database
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+TEMPLATE_EXPLICIT_REQUEST = "request" in inspect.signature(templates.TemplateResponse).parameters
 
 bot_thread = None
 
@@ -55,7 +57,7 @@ async def read_root(request: Request):
     messages_per_account = database.get_setting("MESSAGES_PER_ACCOUNT", "15")
     spintax_message = database.get_message_template("SPINTAX_MESSAGE", "")
 
-    return templates.TemplateResponse(name="index.html", context={
+    context = {
         "request": request,
         "stats": stats,
         "is_running": is_running,
@@ -75,7 +77,10 @@ async def read_root(request: Request):
         "scroll_min_seconds": scroll_min_seconds,
         "scroll_max_seconds": scroll_max_seconds,
         "spintax_message": spintax_message,
-    })
+    }
+    if TEMPLATE_EXPLICIT_REQUEST:
+        return templates.TemplateResponse(request, "index.html", context)
+    return templates.TemplateResponse("index.html", context)
 
 
 @app.get("/logs", response_class=PlainTextResponse)
