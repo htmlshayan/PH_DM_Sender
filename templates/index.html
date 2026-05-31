@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Control Center</title>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="/static/app.js" defer></script>
+    <script>window.SENT_TARGETS = {{ sent_targets_json | default('[]') | safe }};</script>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">ADS</div>
+                <div>
+                    <div class="brand-title">Auto DM Sender</div>
+                    <div class="brand-subtitle">Automation Console</div>
+                </div>
+            </div>
+
+            <nav class="nav">
+                <button class="nav-item active" type="button" data-target="dashboard">Dashboard</button>
+                <button class="nav-item" type="button" data-target="targets">Targets</button>
+                <button class="nav-item" type="button" data-target="dms">DMs Sent</button>
+                <button class="nav-item" type="button" data-target="accounts">Accounts</button>
+                <button class="nav-item" type="button" data-target="messages">Messages</button>
+                <button class="nav-item" type="button" data-target="settings">Settings</button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    System Active
+                </div>
+                
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p>Manage your DM automation from one place.</p>
+                </div>
+            </div>
+
+            <section class="page active" id="dashboard" data-page="dashboard">
+                <div class="grid">
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Dashboard Stats</h3>
+                                <p>Live snapshot of messages, targets, and system activity.</p>
+                            </div>
+                            <span class="pill {% if is_running %}success{% else %}danger{% endif %}">
+                                {% if is_running %}Running{% else %}Stopped{% endif %}
+                            </span>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="label">Total Messages</div>
+                                <div class="value">{{ stats.total }}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Today Messages</div>
+                                <div class="value">{{ stats.today }}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Remaining Targets</div>
+                                <div class="value">{{ remaining_targets }}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Total Targets</div>
+                                <div class="value">{{ total_targets }}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Active Browsers</div>
+                                <div class="value">{{ active_browsers }}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Total Accounts</div>
+                                <div class="value">{{ account_count }}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Bot Status</div>
+                                <div class="value">{% if is_running %}Running{% else %}Stopped{% endif %}</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>DM Sender</h3>
+                                <p>Runs the DM automation for your selected profiles.</p>
+                            </div>
+                            <span class="pill {% if is_running %}success{% else %}danger{% endif %}">
+                                {% if is_running %}Running{% else %}Stopped{% endif %}
+                            </span>
+                        </div>
+                        <div class="panel-actions">
+                            <form action="/start" method="post">
+                                <button type="submit" class="btn btn-primary" {% if is_running %}disabled{% endif %}>Start</button>
+                            </form>
+                            <form action="/stop" method="post">
+                                <button type="submit" class="btn btn-danger" {% if not is_running %}disabled{% endif %}>Stop All</button>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Bot Logs</h3>
+                                <p>Live stream of the bot output.</p>
+                            </div>
+                            <div class="panel-header-actions">
+                                <span class="pill success">Live</span>
+                                <button type="button" class="btn btn-outline btn-sm" id="clear-logs-btn">Clear Logs</button>
+                            </div>
+                        </div>
+                        <div class="log-terminal">
+                            <pre id="bot-log-output" class="log-output">Loading logs...</pre>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="settings" data-page="settings">
+                <div class="grid">
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Settings</h3>
+                                <p>Update automation settings stored in the database.</p>
+                            </div>
+                        </div>
+                        <form action="/save_settings" method="post">
+                            <div class="section-title">Messaging Controls</div>
+                            <div class="settings-grid">
+                                <div class="field">
+                                    <label for="MESSAGE_DELAY_MIN_SECONDS">Message Delay Min (Seconds)</label>
+                                    <input type="number" id="MESSAGE_DELAY_MIN_SECONDS" name="MESSAGE_DELAY_MIN_SECONDS" min="0" value="{{ message_delay_min_seconds }}">
+                                    <div class="field-hint">Minimum delay between messages.</div>
+                                </div>
+                                <div class="field">
+                                    <label for="MESSAGE_DELAY_MAX_SECONDS">Message Delay Max (Seconds)</label>
+                                    <input type="number" id="MESSAGE_DELAY_MAX_SECONDS" name="MESSAGE_DELAY_MAX_SECONDS" min="0" value="{{ message_delay_max_seconds }}">
+                                    <div class="field-hint">Maximum delay between messages.</div>
+                                </div>
+                                <div class="field">
+                                    <label for="MESSAGES_PER_ACCOUNT">Messages Per Account</label>
+                                    <input type="number" id="MESSAGES_PER_ACCOUNT" name="MESSAGES_PER_ACCOUNT" min="1" value="{{ messages_per_account }}">
+                                    <div class="field-hint">How many messages to send before switching accounts.</div>
+                                </div>
+                                <div class="field">
+                                    <label for="SCROLL_MIN_SECONDS">Scroll Time Min (Seconds)</label>
+                                    <input type="number" id="SCROLL_MIN_SECONDS" name="SCROLL_MIN_SECONDS" min="0" value="{{ scroll_min_seconds }}">
+                                    <div class="field-hint">Minimum human-like scrolling time per profile.</div>
+                                </div>
+                                <div class="field">
+                                    <label for="SCROLL_MAX_SECONDS">Scroll Time Max (Seconds)</label>
+                                    <input type="number" id="SCROLL_MAX_SECONDS" name="SCROLL_MAX_SECONDS" min="0" value="{{ scroll_max_seconds }}">
+                                    <div class="field-hint">Maximum human-like scrolling time per profile.</div>
+                                </div>
+                            </div>
+                            <div class="settings-actions">
+                                <button type="submit" class="btn btn-primary">Save Settings</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="messages" data-page="messages">
+                <div class="grid">
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Messages</h3>
+                                <p>Manage the spintax template used for DMs.</p>
+                            </div>
+                        </div>
+                        <form action="/save_settings" method="post">
+                            <div class="settings-grid">
+                                <div class="field full">
+                                    <label for="SPINTAX_MESSAGE">Spintax Message</label>
+                                    <textarea id="SPINTAX_MESSAGE" name="SPINTAX_MESSAGE" rows="10" class="message-textarea">{{ spintax_message }}</textarea>
+                                    <div class="field-hint">Spintax format is supported. One message template.</div>
+                                </div>
+                            </div>
+                            <div class="settings-actions">
+                                <button type="submit" class="btn btn-primary">Save Message</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="targets" data-page="targets">
+                <div class="grid">
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Target Profiles</h3>
+                                <p>Enter profile URLs you want to target. Marked profiles will be skipped.</p>
+                            </div>
+                        </div>
+
+                        <form action="/targets/save_all" method="post" id="targets-form">
+                            <div class="targets-bulk">
+                                <div class="field">
+                                    <label for="bulk-targets-input">Bulk Targets</label>
+                                    <textarea id="bulk-targets-input" rows="6" placeholder="Paste one profile URL per line"></textarea>
+                                    <div class="field-hint">One URL per line. Empty lines are ignored.</div>
+                                </div>
+                            </div>
+                            <div id="targets-list">
+                                {% if pending_targets %}
+                                    {% for url in pending_targets %}
+                                        <div class="target-row">
+                                            <div class="field" style="flex:1;">
+                                                <label>Profile URL</label>
+                                                <input type="text" name="target_url" value="{{ url }}" required>
+                                            </div>
+                                            <div class="account-actions">
+                                                <button type="button" class="btn btn-danger delete-target">Delete</button>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="empty-state">No targets added yet.</div>
+                                {% endif %}
+                            </div>
+                            <div id="targets-pagination" class="pagination-controls"></div>
+                        </form>
+
+                        <div class="targets-toolbar">
+                            <button type="submit" class="btn btn-primary" form="targets-form">Save Targets</button>
+                        </div>
+
+                        
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="accounts" data-page="accounts">
+                <div class="grid">
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Accounts</h3>
+                                <p>Store multiple cookie sets for the bot.</p>
+                            </div>
+                        </div>
+                        <div class="accounts-toolbar">
+                            <button type="button" class="btn btn-outline" id="add-account-btn">Add Account</button>
+                            <button type="submit" class="btn btn-primary" form="accounts-form">Save Accounts</button>
+                        </div>
+
+                        <form action="/accounts/save_all" method="post" id="accounts-form">
+                            <div id="accounts-list">
+                                {% if accounts %}
+                                    {% for account in accounts %}
+                                        <div class="account-row" data-account-id="{{ account.id }}">
+                                            <input type="hidden" name="account_id" value="{{ account.id }}">
+                                            <div class="field">
+                                                <label for="account_name_{{ account.id }}">Account Name</label>
+                                                <input type="text" id="account_name_{{ account.id }}" name="account_name" value="{{ account.name }}" required>
+                                            </div>
+                                            <div class="field">
+                                                <label for="account_profile_id_{{ account.id }}">GoLogin Profile ID</label>
+                                                <input type="text" id="account_profile_id_{{ account.id }}" name="account_profile_id" value="{{ account.gologin_profile_id or '' }}" placeholder="Profile ID">
+                                                <div class="field-hint">Paste the GoLogin profile ID for this account.</div>
+                                            </div>
+                                            <div class="field">
+                                                <label for="account_cookies_{{ account.id }}">Account Cookies</label>
+                                                <textarea id="account_cookies_{{ account.id }}" name="account_cookies" rows="3" required>{{ account.cookies_json }}</textarea>
+                                                <div class="field-hint">Paste the cookies array for this account.</div>
+                                            </div>
+                                            <div class="account-actions">
+                                                <button type="button" class="btn btn-danger delete-account" data-account-id="{{ account.id }}">Delete</button>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="empty-state">No accounts added yet.</div>
+                                {% endif %}
+                            </div>
+                            <div id="accounts-pagination" class="pagination-controls"></div>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="dms" data-page="dms">
+                <div class="grid">
+                    <section class="panel span-12">
+                        <div class="panel-header">
+                            <div>
+                                <h3>DMs Sent</h3>
+                                <p>Profiles that have already received DMs.</p>
+                            </div>
+                        </div>
+                        <div id="dms-list">
+                            {% if sent_targets_with_accounts %}
+                                {% for item in sent_targets_with_accounts %}
+                                    <div class="sent-row">
+                                        <div class="sent-url">{{ item.url }}</div>
+                                        <div class="sent-meta">Sent by {{ item.account_name or 'Unknown' }}</div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state">No DMs sent yet.</div>
+                            {% endif %}
+                        </div>
+                        <div id="dms-pagination" class="pagination-controls"></div>
+                    </section>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
