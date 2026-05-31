@@ -25,12 +25,13 @@ def get_account_count(accounts):
 async def read_root(request: Request):
     stats = database.get_stats()
     is_running = bot.bot_running if bot_thread and bot_thread.is_alive() else False
-    total_targets, remaining_targets = database.get_target_counts()
     active_browsers = 1 if is_running else 0
     client_ip = request.client.host if request.client else "LOCALHOST"
     accounts = database.get_accounts()
     account_count = get_account_count(accounts)
     pending_targets, sent_targets = database.get_targets_split()
+    total_targets = len(pending_targets)
+    remaining_targets = total_targets
     sent_targets_with_accounts = database.get_sent_targets_with_accounts()
     message_delay_min_seconds = database.get_setting("MESSAGE_DELAY_MIN_SECONDS", "").strip()
     message_delay_max_seconds = database.get_setting("MESSAGE_DELAY_MAX_SECONDS", "").strip()
