@@ -375,17 +375,18 @@ def run_bot():
         10,
     )
 
-    urls_to_process = database.get_targets()
-
     spintax_template = database.get_message_template("SPINTAX_MESSAGE", "").strip()
     if not spintax_template:
         log("⚠️ No spintax message configured.")
-    def pick_next_available_index(start_index):
+    def pick_random_account_index(exclude_index=None):
         if not account_profiles:
             return None
-        return start_index % len(account_profiles)
+        if exclude_index is None or len(account_profiles) == 1:
+            return random.randrange(len(account_profiles))
+        candidates = [idx for idx in range(len(account_profiles)) if idx != exclude_index]
+        return random.choice(candidates) if candidates else None
 
-    current_gl_index = pick_next_available_index(0)
+    current_gl_index = pick_random_account_index()
     if current_gl_index is None:
         log("No accounts available. Stopping.")
         return
@@ -402,7 +403,7 @@ def run_bot():
     )
     set_active_session(gl, driver)
 
-    def switch_account(next_start_index):
+    def switch_account():
         nonlocal current_gl_index, messages_sent_on_current_profile, gl, driver
         if not bot_running:
             return False
@@ -417,7 +418,7 @@ def run_bot():
             log(f"❌ Failed to save cookies for profile {current_profile_id}: {e}")
         driver.quit()
         gl.stop()
-        next_index = pick_next_available_index(next_start_index)
+        next_index = pick_random_account_index(exclude_index=current_gl_index)
         if next_index is None:
             log("No accounts available. Stopping.")
             return False
@@ -477,87 +478,97 @@ def run_bot():
                 return False
             if messages_sent_on_current_profile >= messages_per_account:
                 log(f"🔄 Reached max DMs ({messages_per_account}) for current GoLogin profile.")
-                if not switch_account(current_gl_index + 1):
+                if not switch_account():
                     return False
                 continue
             return True
 
     try:
-        for url in urls_to_process:
-            if not bot_running:
-                log("🛑 Bot stop requested. Exiting loop.")
-                break
+        while bot_running:
+            urls_to_process = database.get_targets()
+            if not urls_to_process:
+                log("🕒 No targets found. Checking again in 60s.")
+                time.sleep(60)
+                continue
 
-            if not ensure_active_account():
-                break
+            while urls_to_process:
+                url = random.choice(urls_to_process)
+                urls_to_process.remove(url)
+                if not bot_running:
+                    log("🛑 Bot stop requested. Exiting loop.")
+                    break
 
-            current_account_id = account_profiles[current_gl_index]["profile_id"]
+                if not ensure_active_account():
+                    break
 
-            wait = WebDriverWait(driver, 15)
-            try:
-                log(f"Navigating to {url}")
-                driver.get(url)
-                time.sleep(3)  # Wait for initial page load
-                
-                # Simulate human browsing (5-10 seconds of random scrolling)
-                if not simulate_human_browsing(driver, scroll_min_seconds, scroll_max_seconds):
-                    log("⚠️ Skipping profile due to scrolling error.")
-                    if not restart_current_session():
-                        break
-                    continue
-                
-                # Find and click the message button
-                msg_btn = wait.until(EC.presence_of_element_located((By.ID, "bSendMessage")))
-                # Scroll to element and click via JS to avoid interception from sticky headers/overlays
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", msg_btn)
-                time.sleep(1)
-                driver.execute_script("arguments[0].click();", msg_btn)
-                log("✅ Clicked message button")
-                
-                # Wait for textarea to appear
-                textarea = wait.until(EC.visibility_of_element_located((By.ID, "postMsgInput")))
+                current_account_id = account_profiles[current_gl_index]["profile_id"]
+
+                wait = WebDriverWait(driver, 15)
                 try:
-                    textarea.click()
-                    textarea.send_keys(Keys.CONTROL, "a")
-                    textarea.send_keys(Keys.DELETE)
-                except Exception:
-                    pass
-                
-                # Resolve message through spintax and emulate human typing
-                message = resolve_spintax(spintax_template)
-                log(f"Typing message: {message[:30]}...") # Log first 30 chars
-                human_typing(driver, textarea, message)
+                    log(f"Navigating to {url}")
+                    driver.get(url)
+                    time.sleep(3)  # Wait for initial page load
+                    
+                    # Simulate human browsing (5-10 seconds of random scrolling)
+                    if not simulate_human_browsing(driver, scroll_min_seconds, scroll_max_seconds):
+                        log("⚠️ Skipping profile due to scrolling error.")
+                        if not restart_current_session():
+                            break
+                        continue
+                    
+                    # Find and click the message button
+                    msg_btn = wait.until(EC.presence_of_element_located((By.ID, "bSendMessage")))
+                    # Scroll to element and click via JS to avoid interception from sticky headers/overlays
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", msg_btn)
+                    time.sleep(1)
+                    driver.execute_script("arguments[0].click();", msg_btn)
+                    log("✅ Clicked message button")
+                    
+                    # Wait for textarea to appear
+                    textarea = wait.until(EC.visibility_of_element_located((By.ID, "postMsgInput")))
+                    try:
+                        textarea.click()
+                        textarea.send_keys(Keys.CONTROL, "a")
+                        textarea.send_keys(Keys.DELETE)
+                    except Exception:
+                        pass
+                    
+                    # Resolve message through spintax and emulate human typing
+                    message = resolve_spintax(spintax_template)
+                    log(f"Typing message: {message[:30]}...") # Log first 30 chars
+                    human_typing(driver, textarea, message)
 
-                time.sleep(0.5)
-                ensure_full_message(driver, textarea, message)
-                time.sleep(0.5)
-                
-                # Click the Send button
-                send_btn = wait.until(EC.presence_of_element_located((By.ID, "sendButton")))
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", send_btn)
-                time.sleep(0.5)
-                driver.execute_script("arguments[0].click();", send_btn)
-                log("✅ Message sent via Send button!")
-                
-                # Increment sent messages counter for current profile
-                messages_sent_on_current_profile += 1
-                
-                # Log message to database
-                log_message_sent()
-                log_account_message(current_account_id, url, message)
-                
-                # Mark as sent in database
-                database.mark_target_sent(url)
-                
-                # Wait between messages using the configured delay
-                delay = random.uniform(message_delay_min_seconds, message_delay_max_seconds)
-                log(f"Waiting {delay:.1f}s before next profile...")
-                time.sleep(delay)
+                    time.sleep(0.5)
+                    ensure_full_message(driver, textarea, message)
+                    time.sleep(0.5)
+                    
+                    # Click the Send button
+                    send_btn = wait.until(EC.presence_of_element_located((By.ID, "sendButton")))
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", send_btn)
+                    time.sleep(0.5)
+                    driver.execute_script("arguments[0].click();", send_btn)
+                    log("✅ Message sent via Send button!")
+                    
+                    # Increment sent messages counter for current profile
+                    messages_sent_on_current_profile += 1
+                    
+                    # Log message to database
+                    log_message_sent()
+                    log_account_message(current_account_id, url, message)
+                    
+                    # Mark as sent in database
+                    database.mark_target_sent(url)
+                    
+                    # Wait between messages using the configured delay
+                    delay = random.uniform(message_delay_min_seconds, message_delay_max_seconds)
+                    log(f"Waiting {delay:.1f}s before next profile...")
+                    time.sleep(delay)
 
-            except Exception as e:
-                log(f"❌ Failed on profile {url}: {e}")
+                except Exception as e:
+                    log(f"❌ Failed on profile {url}: {e}")
 
-        log("✅ All profiles completed.")
+            if bot_running:
+                log("✅ Batch completed. Waiting for new targets...")
     except KeyboardInterrupt:
         pass
     finally:
