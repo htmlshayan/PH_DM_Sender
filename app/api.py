@@ -55,7 +55,7 @@ async def read_root(request: Request):
     messages_per_account = database.get_setting("MESSAGES_PER_ACCOUNT", "15")
     spintax_message = database.get_message_template("SPINTAX_MESSAGE", "")
 
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse(name="index.html", context={
         "request": request,
         "stats": stats,
         "is_running": is_running,
