@@ -128,6 +128,33 @@ def human_typing(driver, element, text):
         time.sleep(random.uniform(0.02, 0.1))
 
 
+def set_text_value(driver, element, text):
+    driver.execute_script(
+        "arguments[0].value = arguments[1];"
+        "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));"
+        "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+        element,
+        text,
+    )
+
+
+def ensure_full_message(driver, element, message, max_attempts=2):
+    for _ in range(max_attempts):
+        current = element.get_attribute("value") or ""
+        if current == message:
+            return True
+        set_text_value(driver, element, message)
+        time.sleep(0.2)
+    current = element.get_attribute("value") or ""
+    if current != message:
+        log(
+            "⚠️ Message length mismatch after retries: "
+            f"expected {len(message)}, got {len(current)}."
+        )
+        return False
+    return True
+
+
 def get_int_setting(name, default):
     raw_value = database.get_setting(name, "")
     if raw_value is None or str(raw_value).strip() == "":
@@ -489,13 +516,21 @@ def run_bot():
                 
                 # Wait for textarea to appear
                 textarea = wait.until(EC.visibility_of_element_located((By.ID, "postMsgInput")))
+                try:
+                    textarea.click()
+                    textarea.send_keys(Keys.CONTROL, "a")
+                    textarea.send_keys(Keys.DELETE)
+                except Exception:
+                    pass
                 
                 # Resolve message through spintax and emulate human typing
                 message = resolve_spintax(spintax_template)
                 log(f"Typing message: {message[:30]}...") # Log first 30 chars
                 human_typing(driver, textarea, message)
-                
-                time.sleep(1)
+
+                time.sleep(0.5)
+                ensure_full_message(driver, textarea, message)
+                time.sleep(0.5)
                 
                 # Click the Send button
                 send_btn = wait.until(EC.presence_of_element_located((By.ID, "sendButton")))
