@@ -1,0 +1,59 @@
+[15472:23356:0601/170811.171:INFO:gologin\public\chrome\gologin_main_parts.cc:26] GologinMainParts::PreEarlyInitialization
+[15472:23356:0601/170811.171:INFO:gologin\public\chrome\gologin_main_parts.cc:20] GologinMainParts: ORBITA_RUNTIME_FIX_MODE=addBinding
+[15472:23356:0601/170811.509:INFO:gologin\license\diffie_hellman.cc:379] Libsodium test functions called successfully
+[15472:23356:0601/170811.509:INFO:gologin\license\jwt_validator.cc:28] ValidateToken: Starting JWT validation
+[15472:23356:0601/170811.509:INFO:gologin\license\jwt_validator.cc:29] Token length: 336
+[15472:23356:0601/170811.509:INFO:gologin\license\jwt_validator.cc:30] Token preview: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ...
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:39] ValidateToken: Token parsed successfully
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:40]   Header: {"alg":"HS256","typ":"JWT"}
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:41]   Payload: {"type":"get-profile-params-for-orbita","sub":"6a13811c68d721dc22f09107","profileId":"6a1cc551485ea58de58c8e83","uid":"b3ab4e8f-f7e7-4d1c-8120-e7cb93308085","iat":1780315690,"exp":1780315870}
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:42]   Signature: DkSAmYO7Hzgo2tTCIcrQjPJhNYFcQ0srF9Fxl1C9A-s
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:50] ValidateToken: Signature verification passed (not implemented, always true)
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:162] ParsePayload: Parsing JWT payload JSON
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:163] Payload JSON: {"type":"get-profile-params-for-orbita","sub":"6a13811c68d721dc22f09107","profileId":"6a1cc551485ea58de58c8e83","uid":"b3ab4e8f-f7e7-4d1c-8120-e7cb93308085","iat":1780315690,"exp":1780315870}
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:183] ParsePayload: sub (user_id) = 6a13811c68d721dc22f09107
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:200] ParsePayload: profileId = 6a1cc551485ea58de58c8e83
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:220] ParsePayload: machine_id not present (optional)
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:236] ParsePayload: exp (double) = 1780315870
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:251] ParsePayload: iat (double) = 1780315690
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:59] ValidateToken: Payload parsed successfully
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:61]   exp: 1780315870
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:65]   iat: 1780315690
+[15472:23356:0601/170811.510:INFO:gologin\license\jwt_validator.cc:74] ValidateToken: Token is not expired
+[15472:23356:0601/170811.510:INFO:gologin\license\secure_auth.cc:144] Initial run_token valid, expires in 179 seconds
+[15472:23356:0601/170811.510:INFO:gologin\license\secure_auth.cc:150] Initializing authentication for profile: 6a1cc551485ea58de58c8e83
+[15472:23356:0601/170811.510:INFO:gologin\license\secure_auth.cc:151] Machine ID: 6b81f2b60958d895c93f7221b05ca7820ffbc59dcf61a9cfa096881143296aa9
+[15472:23356:0601/170811.510:INFO:gologin\license\secure_auth.cc:463] Sending key exchange request to: https://api.gologin.com/browser/features/6a1cc551485ea58de58c8e83/profile-params-session-token
+[15472:23356:0601/170811.510:INFO:gologin\license\secure_auth.cc:464] Request body: {"machineId":"6b81f2b60958d895c93f7221b05ca7820ffbc59dcf61a9cfa096881143296aa9","pubKey":"caf8a0274b6078cc9e208eaee3741e3d87a28e7acad7924a3dc8bbd80693af4c"}
+[15472:23356:0601/170811.510:INFO:gologin\license\secure_auth.cc:465] Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+[15472:23356:0601/170812.841:INFO:gologin\license\secure_auth.cc:471] Key exchange response received, HTTP code: 201
+[15472:23356:0601/170812.841:INFO:gologin\license\secure_auth.cc:282] Received session token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ2V0LXByb2ZpbGUtcGFyYW1zLWZvci1vcmJpdGEiLCJzdWIiOiI2YTEzODExYzY4ZDcyMWRjMjJmMDkxMDciLCJwcm9maWxlSWQiOiI2YTFjYzU1MTQ4NWVhNThkZTU4YzhlODMiLCJwdWJLZXkiOiIxYWYwMmI1MjIwN2Q1ZjY2ZGFhMzhlZjM5YTJhMjAxM2ZjZmFjMjZmZjNmYzJjYmRlNzk0N2YxNTBlYWNiZjQyIiwiaWF0IjoxNzgwMzE1NjkyfQ.MaAib1G4LZF_QnkNshu3yVkwluCtaGK4o22oh-8Ekrg
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:28] ValidateToken: Starting JWT validation
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:29] Token length: 355
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:30] Token preview: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiZ...
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:39] ValidateToken: Token parsed successfully
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:40]   Header: {"alg":"HS256","typ":"JWT"}
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:41]   Payload: {"type":"get-profile-params-for-orbita","sub":"6a13811c68d721dc22f09107","profileId":"6a1cc551485ea58de58c8e83","pubKey":"1af02b52207d5f66daa38ef39a2a2013fcfac26ff3fc2cbde7947f150eacbf42","iat":1780315692}
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:42]   Signature: MaAib1G4LZF_QnkNshu3yVkwluCtaGK4o22oh-8Ekrg
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:50] ValidateToken: Signature verification passed (not implemented, always true)
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:162] ParsePayload: Parsing JWT payload JSON
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:163] Payload JSON: {"type":"get-profile-params-for-orbita","sub":"6a13811c68d721dc22f09107","profileId":"6a1cc551485ea58de58c8e83","pubKey":"1af02b52207d5f66daa38ef39a2a2013fcfac26ff3fc2cbde7947f150eacbf42","iat":1780315692}
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:183] ParsePayload: sub (user_id) = 6a13811c68d721dc22f09107
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:200] ParsePayload: profileId = 6a1cc551485ea58de58c8e83
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:220] ParsePayload: machine_id not present (optional)
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:242] ParsePayload: exp not present (session token, no expiration)
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:251] ParsePayload: iat (double) = 1780315692
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:59] ValidateToken: Payload parsed successfully
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:63]   exp: not present (session token, no expiration)
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:65]   iat: 1780315692
+[15472:23356:0601/170812.841:INFO:gologin\license\jwt_validator.cc:76] ValidateToken: Token has no expiration (session token)
+[15472:23356:0601/170812.841:INFO:gologin\license\secure_auth.cc:303] Session token has no expiration (managed by heartbeat)
+[15472:23356:0601/170812.841:INFO:gologin\license\secure_auth.cc:314] Extracted server public key: 1af02b52207d5f66daa38ef39a2a2013fcfac26ff3fc2cbde7947f150eacbf42
+[15472:23356:0601/170812.841:INFO:gologin\license\secure_auth.cc:343] Authentication completed successfully
+[15472:23356:0601/170812.842:INFO:gologin\license\secure_auth.cc:503] Sending preferences request to: https://api.gologin.com/browser/features/6a1cc551485ea58de58c8e83/profile-params-for-orbita
+[15472:23356:0601/170812.842:INFO:gologin\license\secure_auth.cc:504] Request body: {"machineId":"6b81f2b60958d895c93f7221b05ca7820ffbc59dcf61a9cfa096881143296aa9","message":"d533f6bcdb3a9760f4d26fda6eb0538ab8b955edf416f26bfbd379d10487b5a759","nonce":"bc8b568941c1ec28985547b95cdb4eaed2157539c54c2328"}
+[15472:23356:0601/170812.842:INFO:gologin\license\secure_auth.cc:505] Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+[15472:23356:0601/170813.426:INFO:gologin\license\secure_auth.cc:511] Preferences response received, HTTP code: 201
+[15472:23356:0601/170813.433:WARNING:chrome\browser\signin\account_consistency_mode_manager.cc:74] Desktop Identity Consistency cannot be enabled as no OAuth client ID and client secret have been configured.
+[11396:24348:0601/170822.371:WARNING:net\extras\sqlite\sqlite_persistent_store_backend_base.cc:176] Failed to post task from FlushAndNotifyInBackground@net\extras\sqlite\sqlite_persistent_store_backend_base.cc:226 to client_task_runner_.
+[11396:24348:0601/170822.371:WARNING:net\extras\sqlite\sqlite_persistent_store_backend_base.cc:176] Failed to post task from FlushAndNotifyInBackground@net\extras\sqlite\sqlite_persistent_store_backend_base.cc:226 to client_task_runner_.

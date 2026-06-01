@@ -127,7 +127,6 @@ def human_typing(driver, element, text):
             element.send_keys(char)
         time.sleep(random.uniform(0.02, 0.1))
 
-
 def set_text_value(driver, element, text):
     driver.execute_script(
         "arguments[0].value = arguments[1];"
@@ -378,35 +377,111 @@ def run_bot():
     spintax_template = database.get_message_template("SPINTAX_MESSAGE", "").strip()
     if not spintax_template:
         log("⚠️ No spintax message configured.")
+    messages_sent_per_account = {
+        account["profile_id"]: 0 for account in account_profiles
+    }
+    unavailable_profiles = set()
+
+    def mark_profile_unavailable(profile_id, reason=None):
+        if not profile_id or profile_id in unavailable_profiles:
+            return
+        unavailable_profiles.add(profile_id)
+        if reason:
+            log(reason)
+
+    def is_account_available(account):
+        profile_id = account["profile_id"]
+        return (
+            profile_id not in unavailable_profiles
+            and messages_sent_per_account[profile_id] < messages_per_account
+        )
+
+    def has_available_accounts():
+        return any(is_account_available(account) for account in account_profiles)
+
     def pick_random_account_index(exclude_index=None):
         if not account_profiles:
             return None
-        if exclude_index is None or len(account_profiles) == 1:
-            return random.randrange(len(account_profiles))
-        candidates = [idx for idx in range(len(account_profiles)) if idx != exclude_index]
-        return random.choice(candidates) if candidates else None
+        available = [
+            idx
+            for idx, account in enumerate(account_profiles)
+            if is_account_available(account)
+        ]
+        if exclude_index is not None and len(available) > 1 and exclude_index in available:
+            available.remove(exclude_index)
+        return random.choice(available) if available else None
 
-    current_gl_index = pick_random_account_index()
-    if current_gl_index is None:
-        log("No accounts available. Stopping.")
-        return
+    current_gl_index = None
+    gl = None
+    driver = None
 
-    messages_sent_on_current_profile = 0
-    
-    current_account = account_profiles[current_gl_index]
-    log(f"🚀 Starting GoLogin profile: {current_account['profile_id']}")
-    gl, driver = init_gologin_session(
-        current_account["profile_id"],
-        token,
-        chrome_version,
-        current_account["cookies_json"],
-    )
-    set_active_session(gl, driver)
-
-    def switch_account():
-        nonlocal current_gl_index, messages_sent_on_current_profile, gl, driver
+    def start_new_session():
+        nonlocal current_gl_index, gl, driver
         if not bot_running:
             return False
+        attempts = len(account_profiles)
+        while attempts > 0:
+            next_index = pick_random_account_index()
+            if next_index is None:
+                break
+            current_gl_index = next_index
+            next_account = account_profiles[current_gl_index]
+            profile_id = next_account["profile_id"]
+            log(f"🚀 Starting GoLogin profile: {profile_id}")
+            try:
+                gl, driver = init_gologin_session(
+                    profile_id,
+                    token,
+                    chrome_version,
+                    next_account["cookies_json"],
+                )
+                set_active_session(gl, driver)
+                return True
+            except Exception as e:
+                mark_profile_unavailable(
+                    profile_id,
+                    f"⚠️ Skipping profile {profile_id} due to error: {e}",
+                )
+                attempts -= 1
+                continue
+        log("🕒 No available accounts to start.")
+        return False
+
+    def shutdown_current_session(reason=None):
+        nonlocal gl, driver
+        if reason:
+            log(reason)
+        if driver:
+            try:
+                if current_gl_index is not None:
+                    current_profile_id = account_profiles[current_gl_index]["profile_id"]
+                    current_cookies = driver.get_cookies()
+                    database.update_account_cookies_by_profile_id(
+                        current_profile_id,
+                        json.dumps(current_cookies),
+                    )
+            except Exception as e:
+                log(f"❌ Failed to save cookies for profile {current_profile_id}: {e}")
+            try:
+                driver.quit()
+            except Exception:
+                pass
+        if gl:
+            try:
+                gl.stop()
+            except Exception:
+                pass
+        gl = None
+        driver = None
+        clear_active_session()
+
+    def switch_account():
+        nonlocal current_gl_index, gl, driver
+        if not bot_running:
+            return False
+        if driver is None or gl is None or current_gl_index is None:
+            return start_new_session()
+        log("🔄 Switching to another GoLogin profile.")
         try:
             current_profile_id = account_profiles[current_gl_index]["profile_id"]
             current_cookies = driver.get_cookies()
@@ -416,29 +491,22 @@ def run_bot():
             )
         except Exception as e:
             log(f"❌ Failed to save cookies for profile {current_profile_id}: {e}")
-        driver.quit()
-        gl.stop()
-        next_index = pick_random_account_index(exclude_index=current_gl_index)
-        if next_index is None:
-            log("No accounts available. Stopping.")
-            return False
-        current_gl_index = next_index
-        next_account = account_profiles[current_gl_index]
-        log(f"🚀 Switching to next GoLogin profile: {next_account['profile_id']}")
-        gl, driver = init_gologin_session(
-            next_account["profile_id"],
-            token,
-            chrome_version,
-            next_account["cookies_json"],
-        )
-        set_active_session(gl, driver)
-        messages_sent_on_current_profile = 0
-        return True
+        try:
+            driver.quit()
+        except Exception:
+            pass
+        try:
+            gl.stop()
+        except Exception:
+            pass
+        return start_new_session()
 
     def restart_current_session():
         nonlocal gl, driver
         if not bot_running:
             return False
+        if driver is None or gl is None or current_gl_index is None:
+            return start_new_session()
         current_profile_id = ""
         try:
             current_profile_id = account_profiles[current_gl_index]["profile_id"]
@@ -476,20 +544,54 @@ def run_bot():
         while True:
             if not bot_running:
                 return False
-            if messages_sent_on_current_profile >= messages_per_account:
+            if not has_available_accounts():
+                log("🛑 All accounts reached the DM limit. Stopping bot.")
+                shutdown_current_session()
+                stop_bot()
+                return False
+            if driver is None or gl is None or current_gl_index is None:
+                if not start_new_session():
+                    log("🛑 No available accounts to start. Waiting for manual restart.")
+                    return False
+            current_profile_id = account_profiles[current_gl_index]["profile_id"]
+            if current_profile_id in unavailable_profiles:
+                log("⚠️ Current profile marked unavailable. Switching.")
+                if not switch_account():
+                    log("🛑 No available accounts to switch. Stopping bot.")
+                    shutdown_current_session()
+                    stop_bot()
+                    return False
+                continue
+            if messages_sent_per_account[current_profile_id] >= messages_per_account:
                 log(f"🔄 Reached max DMs ({messages_per_account}) for current GoLogin profile.")
                 if not switch_account():
+                    log("🛑 All accounts reached the DM limit. Stopping bot.")
+                    shutdown_current_session()
+                    stop_bot()
                     return False
                 continue
             return True
 
     try:
         while bot_running:
+            if not has_available_accounts():
+                log("🛑 DM limit reached for all accounts. Stopping bot.")
+                shutdown_current_session()
+                stop_bot()
+                break
             urls_to_process = database.get_targets()
             if not urls_to_process:
+                if driver or gl:
+                    shutdown_current_session("🕒 No targets found. Closing browser session.")
                 log("🕒 No targets found. Checking again in 60s.")
                 time.sleep(60)
                 continue
+
+            if driver is None or gl is None or current_gl_index is None:
+                if not start_new_session():
+                    log("🕒 No available accounts to start. Checking again in 60s.")
+                    time.sleep(60)
+                    continue
 
             while urls_to_process:
                 url = random.choice(urls_to_process)
@@ -550,7 +652,7 @@ def run_bot():
                     log("✅ Message sent via Send button!")
                     
                     # Increment sent messages counter for current profile
-                    messages_sent_on_current_profile += 1
+                    messages_sent_per_account[current_account_id] += 1
                     
                     # Log message to database
                     log_message_sent()
@@ -566,28 +668,30 @@ def run_bot():
 
                 except Exception as e:
                     log(f"❌ Failed on profile {url}: {e}")
+                    if isinstance(e, WebDriverException):
+                        log("⚠️ WebDriver error detected. Restarting browser session.")
+                        if restart_current_session():
+                            continue
+                    current_profile_id = ""
+                    if current_gl_index is not None:
+                        current_profile_id = account_profiles[current_gl_index]["profile_id"]
+                    if current_profile_id:
+                        mark_profile_unavailable(
+                            current_profile_id,
+                            f"⚠️ Error on profile {current_profile_id}. Switching account.",
+                        )
+                    if not switch_account():
+                        log("🛑 No available accounts after error. Stopping bot.")
+                        shutdown_current_session()
+                        stop_bot()
+                        break
 
             if bot_running:
                 log("✅ Batch completed. Waiting for new targets...")
     except KeyboardInterrupt:
         pass
     finally:
-        try:
-            if driver:
-                current_profile_id = account_profiles[current_gl_index]["profile_id"]
-                current_cookies = driver.get_cookies()
-                database.update_account_cookies_by_profile_id(
-                    current_profile_id,
-                    json.dumps(current_cookies),
-                )
-                driver.quit()
-        except Exception as e:
-            log(f"❌ Failed to save cookies on shutdown: {e}")
-        try:
-            gl.stop()
-        except Exception:
-            pass
-        clear_active_session()
+        shutdown_current_session()
 
 def stop_bot():
     global bot_running
